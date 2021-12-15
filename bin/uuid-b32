@@ -1,0 +1,79 @@
+#!/usr/bin/env node
+
+let args = process.argv.slice(2)
+
+if (args.includes('-h') || args.includes('--help')) {
+    console.log(`
+Generate or convert a uuid to/from base32 encoding
+
+Usage: uuid-b32 (--uuid [uuid]) (--variant [variant]) (--b32 [uuid]) (--uuid-v1) (--uuid-v4)
+
+    --variant ....... use base32 variant, supported variants: RFC3548, RFC4648, RFC4648-HEX, Crockford (default)
+    --uuid .......... convert input uuid instead of generating new one
+    --b32 ........... convert input base32 encoded uuid to uuid
+    --uuid-v1 ....... when creating a new uuid, use uuid-v1 variant
+    --uuid-v4 ....... when creating a new uuid, use uuid-v4 variant (default)
+    -v, --version ... print the version
+    -h, --help ...... print this help
+
+Create a base32 uuid:
+
+uuid-b32
+
+Input using stdin is supported
+
+echo <uuid> | uuid-b32 --uuid
+echo <b32>  | uuid-b32 --b32`)
+    process.exit()
+}
+if (args.includes('-v') || args.includes('--version')) {
+    const { version } = require('../package.json')
+    process.stdout.write(version)
+    process.exit()
+}
+
+const opts = {}
+let previous
+for (const arg of args) {
+    if (previous === '--variant') {
+        opts.variant = arg
+    }
+    if (previous === '--uuid') {
+        opts.uuid = arg
+    }
+    if (previous === '--b32') {
+        opts.b32 = arg
+    }
+    previous = arg
+}
+
+function run () {
+    const { encode, decode } = require('..')
+    if (opts.b32) {
+        process.stdout.write(decode(opts.b32, opts.variant))
+    } else {
+        let { uuid } = opts
+        if (!uuid) {
+            uuid = args.includes('--uuid-v1') ? require('uuid').v1() : require('uuid').v4()
+        }
+        process.stdout.write(encode(uuid, opts.variant))
+    }
+}
+
+if (!process.stdin.isTTY) {
+    const res = []
+    process.stdin.on('data', d => res.push(d))
+    process.stdin.on('end', () => {
+        const bytes = Buffer.concat(res).toString().replace(/\n$/, '')
+        if (args.includes('--b32')) {
+            opts.b32 = bytes
+        } else if (args.includes('--uuid')) {
+            opts.uuid = bytes
+        } else {
+            throw new Error(`To convert from stdin you need to specify either --b32 or --uuid`)
+        }
+        run()
+    })
+} else {
+    run()
+}
