@@ -1,6 +1,6 @@
 {
   "name": "uuid-b32",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Convert uuid to and from base32 strings",
   "main": "index.js",
   "types": "types/index.d.ts",
